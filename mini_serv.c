@@ -52,7 +52,8 @@ char *str_join(char *buf, char *add) {
 int max_fd = 0, next_id = 0;
 int ids[65536];
 char *msgs[65536];
-fd_set active_fds, read_fds, write_fds;
+fd_set active_fds, read_fds;
+int server_fd;
 
 void fatal() {
     write(2, "Fatal error\n", 12);
@@ -61,8 +62,8 @@ void fatal() {
 
 void send_all(int author, char *msg) {
     for (int fd = 0; fd <= max_fd; fd++) {
-        if (FD_ISSET(fd, &write_fds) && fd != author)
-            send(fd, msg, strlen(msg), 0); //MSG_NOSIGNAL instead of 0 for exam (only works on linux, prevents SIGPIPE crashes)
+        if (FD_ISSET(fd, &active_fds) && fd != author && fd != server_fd)
+            send(fd, msg, strlen(msg), MSG_NOSIGNAL); //MSG_NOSIGNAL instead of 0 for exam (only works on linux, prevents SIGPIPE crashes)
     }
 }
 
@@ -74,12 +75,14 @@ int main(int ac, char **av) {
 
     struct sockaddr_in addr;
     int server = socket(AF_INET, SOCK_STREAM, 0);
+    server_fd = server;
     if (server < 0) fatal();
 
     bzero(&addr, sizeof(addr));
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = htonl(2130706433);
     addr.sin_port = htons(atoi(av[1]));
+
 
     if (bind(server, (struct sockaddr *)&addr, sizeof(addr)) != 0) fatal();
     if (listen(server, 128) != 0) fatal();
@@ -89,8 +92,8 @@ int main(int ac, char **av) {
     max_fd = server;
 
     while (1) {
-        read_fds = write_fds = active_fds;
-        if (select(max_fd + 1, &read_fds, &write_fds, NULL, NULL) < 0) fatal();
+        read_fds = active_fds;
+        if (select(max_fd + 1, &read_fds, NULL, NULL, NULL) < 0) fatal();
 
         for (int fd = 0; fd <= max_fd; fd++) {
             if (!FD_ISSET(fd, &read_fds)) continue;
