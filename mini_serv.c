@@ -63,7 +63,7 @@ void fatal() {
 void send_all(int author, char *msg) {
     for (int fd = 0; fd <= max_fd; fd++) {
         if (FD_ISSET(fd, &active_fds) && fd != author && fd != server_fd)
-            send(fd, msg, strlen(msg), MSG_NOSIGNAL); //MSG_NOSIGNAL instead of 0 for exam (only works on linux, prevents SIGPIPE crashes)
+            send(fd, msg, strlen(msg), MSG_NOSIGNAL); //MSG_NOSIGNAL ifor linux, 0 for MacOs
     }
 }
 
@@ -76,7 +76,8 @@ int main(int ac, char **av) {
     struct sockaddr_in addr;
     int server = socket(AF_INET, SOCK_STREAM, 0);
     server_fd = server;
-    if (server < 0) fatal();
+    if (server < 0)
+        fatal();
 
     bzero(&addr, sizeof(addr));
     addr.sin_family = AF_INET;
@@ -84,8 +85,10 @@ int main(int ac, char **av) {
     addr.sin_port = htons(atoi(av[1]));
 
 
-    if (bind(server, (struct sockaddr *)&addr, sizeof(addr)) != 0) fatal();
-    if (listen(server, 128) != 0) fatal();
+    if (bind(server, (struct sockaddr *)&addr, sizeof(addr)) != 0)
+        fatal();
+    if (listen(server, 128) != 0)
+        fatal();
 
     FD_ZERO(&active_fds);
     FD_SET(server, &active_fds);
@@ -93,14 +96,17 @@ int main(int ac, char **av) {
 
     while (1) {
         read_fds = active_fds;
-        if (select(max_fd + 1, &read_fds, NULL, NULL, NULL) < 0) fatal();
+        if (select(max_fd + 1, &read_fds, NULL, NULL, NULL) < 0)
+            fatal();
 
         for (int fd = 0; fd <= max_fd; fd++) {
-            if (!FD_ISSET(fd, &read_fds)) continue;
+            if (!FD_ISSET(fd, &read_fds))
+                continue;
 
             if (fd == server) {
                 int client = accept(server, NULL, NULL);
-                if (client < 0) continue;
+                if (client < 0)
+                    continue;
                 max_fd = client > max_fd ? client : max_fd;
                 ids[client] = next_id++;
                 msgs[client] = NULL;
@@ -124,7 +130,8 @@ int main(int ac, char **av) {
                 else {
                     buffer[bytes] = '\0';
                     msgs[fd] = str_join(msgs[fd], buffer);
-                    if (msgs[fd] == NULL) fatal();
+                    if (msgs[fd] == NULL)
+                        fatal();
                     char *msg;
                     while (extract_message(&msgs[fd], &msg)) {
                         char buf[64];
