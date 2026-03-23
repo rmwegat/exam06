@@ -58,7 +58,7 @@ void fatal() {
 void send_all(int author, char *msg) {
     for (int fd = 0; fd <= max_fd; fd++) {
         if (FD_ISSET(fd, &write_fds) && fd != author)
-            send(fd, msg, strlen(msg), 0);
+            send(fd, msg, strlen(msg), 0); //MSG_NOSIGNAL instead of 0 for exam (only works on linux, prevents SIGPIPE crashes)
     }
 }
 
@@ -74,11 +74,11 @@ int main(int ac, char **av) {
 
     bzero(&addr, sizeof(addr));
     addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = htonl(2130706433); // 127.0.0.1
+    addr.sin_addr.s_addr = htonl(2130706433);
     addr.sin_port = htons(atoi(av[1]));
 
     if (bind(server, (struct sockaddr *)&addr, sizeof(addr)) != 0) fatal();
-    if (listen(server, 10) != 0) fatal();
+    if (listen(server, 128) != 0) fatal();
 
     FD_ZERO(&active_fds);
     FD_SET(server, &active_fds);
@@ -117,6 +117,7 @@ int main(int ac, char **av) {
                 else {
                     buffer[bytes] = '\0';
                     msgs[fd] = str_join(msgs[fd], buffer);
+                    if (msgs[fd] == NULL) fatal();
                     char *msg;
                     while (extract_message(&msgs[fd], &msg)) {
                         char buf[64];
