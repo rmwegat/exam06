@@ -81,16 +81,20 @@ int main(int ac, char **av) {
     struct sockaddr_in addr;
     int server = socket(AF_INET, SOCK_STREAM, 0); // Create a TCP socket
     server_fd = server;
-    if (server < 0) fatal();
+    if (server < 0)
+        fatal();
 
-    bzero(&addr, sizeof(addr));
-    addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = htonl(2130706433); // 127.0.0.1
+    // Set up the server address structure:
+    bzero(&addr, sizeof(addr)); //allocate and zero
+    addr.sin_family = AF_INET; //set adrees family
+    addr.sin_addr.s_addr = htonl(2130706433); // bind to 127.0.0.1
     addr.sin_port = htons(atoi(av[1])); // Parse port from args
 
 
-    if (bind(server, (struct sockaddr *)&addr, sizeof(addr)) != 0) fatal();
-    if (listen(server, 128) != 0) fatal(); // Backlog set to 128
+    if (bind(server, (struct sockaddr *)&addr, sizeof(addr)) != 0)
+        fatal();
+    if (listen(server, 128) != 0) // Backlog set to 128
+        fatal();
 
     // Initialize our set of active connections
     FD_ZERO(&active_fds);
@@ -102,16 +106,21 @@ int main(int ac, char **av) {
         read_fds = active_fds;
         
         // select monitors the largest fd + 1
-        if (select(max_fd + 1, &read_fds, NULL, NULL, NULL) < 0) fatal();
+        if (select(max_fd + 1, &read_fds, NULL, NULL, NULL) < 0)
+            fatal();
 
-        for (int fd = 0; fd <= max_fd; fd++) {
+        for (int fd = 0; fd <= max_fd; fd++)
+        {
             // Only handle read events if fd is flagged by select
-            if (!FD_ISSET(fd, &read_fds)) continue;
+            if (!FD_ISSET(fd, &read_fds))
+                continue;
 
-            if (fd == server) {
+            if (fd == server)
+            {
                 // Event on server fd means a new client is connecting
                 int client = accept(server, NULL, NULL);
-                if (client < 0) continue;
+                if (client < 0)
+                    continue;
                 max_fd = client > max_fd ? client : max_fd; // Update max_fd if needed
                 ids[client] = next_id++;
                 msgs[client] = NULL;
@@ -120,7 +129,8 @@ int main(int ac, char **av) {
                 char buf[64];
                 sprintf(buf, "server: client %d just arrived\n", ids[client]);
                 send_all(client, buf);
-            } 
+
+            }
             else {
                 // Event on client fd means data was received or client disconnected
                 char buffer[1001];
