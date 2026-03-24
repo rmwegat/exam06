@@ -49,11 +49,11 @@ char *str_join(char *buf, char *add) {
 }
 // --- END COPY/PASTE ---
 
-int max_fd = 0, next_id = 0;
-int ids[65536];
-char *msgs[65536];
-fd_set active_fds, read_fds;
-int server_fd;
+int g_max_fd = 0, g_next_id = 0;
+int g_ids[65536];
+char *g_msgs[65536];
+fd_set g_active_fds, read_fds;
+int g_server_fd;
 
 void fatal() {
     write(2, "Fatal error\n", 12);
@@ -61,8 +61,8 @@ void fatal() {
 }
 
 void send_all(int author, char *msg) {
-    for (int fd = 0; fd <= max_fd; fd++) {
-        if (FD_ISSET(fd, &active_fds) && fd != author && fd != server_fd)
+    for (int fd = 0; fd <= g_max_fd; fd++) {
+        if (FD_ISSET(fd, &g_active_fds) && fd != author && fd != g_server_fd)
             send(fd, msg, strlen(msg), MSG_NOSIGNAL); //MSG_NOSIGNAL ifor linux, 0 for MacOs
     }
 }
@@ -75,7 +75,7 @@ int main(int ac, char **av) {
 
     struct sockaddr_in addr;
     int server = socket(AF_INET, SOCK_STREAM, 0);
-    server_fd = server;
+    g_server_fd = server;
     if (server < 0)
         fatal();
 
@@ -90,16 +90,16 @@ int main(int ac, char **av) {
     if (listen(server, 128) != 0)
         fatal();
 
-    FD_ZERO(&active_fds);
-    FD_SET(server, &active_fds);
-    max_fd = server;
+    FD_ZERO(&g_active_fds);
+    FD_SET(server, &g_active_fds);
+    g_max_fd = server;
 
     while (1) {
-        read_fds = active_fds;
-        if (select(max_fd + 1, &read_fds, NULL, NULL, NULL) < 0)
+        read_fds = g_active_fds;
+        if (select(g_max_fd + 1, &read_fds, NULL, NULL, NULL) < 0)
             fatal();
 
-        for (int fd = 0; fd <= max_fd; fd++) {
+        for (int fd = 0; fd <= g_max_fd; fd++) {
             if (!FD_ISSET(fd, &read_fds))
                 continue;
 
@@ -107,13 +107,13 @@ int main(int ac, char **av) {
                 int client = accept(server, NULL, NULL);
                 if (client < 0)
                     continue;
-                max_fd = client > max_fd ? client : max_fd;
-                ids[client] = next_id++;
-                msgs[client] = NULL;
-                FD_SET(client, &active_fds);
+                g_max_fd = client > g_max_fd ? client : g_max_fd;
+                g_ids[client] = g_next_id++;
+                g_msgs[client] = NULL;
+                FD_SET(client, &g_active_fds);
                 
                 char buf[64];
-                sprintf(buf, "server: client %d just arrived\n", ids[client]);
+                sprintf(buf, "server: client %d just arrived\n", g_ids[client]);
                 send_all(client, buf);
             } 
             else {
@@ -121,21 +121,21 @@ int main(int ac, char **av) {
                 int bytes = recv(fd, buffer, 1000, 0);
                 if (bytes <= 0) {
                     char buf[64];
-                    sprintf(buf, "server: client %d just left\n", ids[fd]);
+                    sprintf(buf, "server: client %d just left\n", g_ids[fd]);
                     send_all(fd, buf);
-                    free(msgs[fd]);
-                    FD_CLR(fd, &active_fds);
+                    free(g_msgs[fd]);
+                    FD_CLR(fd, &g_active_fds);
                     close(fd);
                 } 
                 else {
                     buffer[bytes] = '\0';
-                    msgs[fd] = str_join(msgs[fd], buffer);
-                    if (msgs[fd] == NULL)
+                    g_msgs[fd] = str_join(g_msgs[fd], buffer);
+                    if (g_msgs[fd] == NULL)
                         fatal();
                     char *msg;
-                    while (extract_message(&msgs[fd], &msg)) {
+                    while (extract_message(&g_msgs[fd], &msg)) {
                         char buf[64];
-                        sprintf(buf, "client %d: ", ids[fd]);
+                        sprintf(buf, "client %d: ", g_ids[fd]);
                         send_all(fd, buf);
                         send_all(fd, msg);
                         free(msg);
