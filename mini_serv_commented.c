@@ -16,7 +16,8 @@ int extract_message(char **buf, char **msg) {
 	i = 0;
 	while ((*buf)[i]) {
         if ((*buf)[i] == '\n') {
-            newbuf = calloc(1, sizeof(*newbuf) * (strlen(*buf + i + 1) + 1));
+            newbuf = calloc(1, sizeof(*newbuf) * \
+            (strlen(*buf + i + 1) + 1));
 			if (newbuf == 0) return (-1);
 			strcpy(newbuf, *buf + i + 1);
 			*msg = *buf;
@@ -36,7 +37,8 @@ char *str_join(char *buf, char *add) {
     len = 0;
 	else
     len = strlen(buf);
-	newbuf = malloc(sizeof(*newbuf) * (len + strlen(add) + 1));
+	newbuf = malloc(sizeof(*newbuf) * \
+    (len + strlen(add) + 1));
 	if (newbuf == 0)
     return (0);
 	newbuf[0] = 0;
@@ -65,7 +67,8 @@ void fatal() {
 // Broadcasts a message to everyone except the author
 void send_all(int author, char *msg) {
     for (int fd = 0; fd <= g_max_fd; fd++) {
-        if (FD_ISSET(fd, &g_active_fds) && fd != author && fd != g_server_fds)
+        if (FD_ISSET(fd, &g_active_fds) && \
+        fd != author && fd != g_server_fds)
             send(fd, msg, strlen(msg), MSG_NOSIGNAL); //MSG_NOSIGNAL for linux in exam, 0 on MacOS prevents SIGPIPE crashes)
     }
 }
@@ -140,18 +143,8 @@ int main(int ac, char **av) {
                     sprintf(buf, "server: client %d just left\n", g_ids[fd]);
                     send_all(fd, buf);
                     free(g_msgs[fd]);
-
-                    // g_msgs[fd] = NULL; // avoid dangling pointer
-
                     FD_CLR(fd, &g_active_fds); // Remove client from active list
                     close(fd);
-
-                    // // Free max fds if fd list is full and new fds can be made free
-                    // if (fd == g_max_fd)
-                    // {
-                    //     while (g_max_fd > 0 && !FD_ISSET(g_max_fd, &g_active_fds))
-                    //         g_max_fd--;
-                    // }
                 } 
                 else // process incoming client data
                 {
